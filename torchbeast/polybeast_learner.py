@@ -52,11 +52,11 @@ parser.add_argument("--xpid", default=None,
 # Training settings.
 parser.add_argument("--disable_checkpoint", action="store_true",
                     help="Disable saving checkpoint.")
-parser.add_argument("--savedir", default="~/palaas/torchbeast",
+parser.add_argument("--savedir", default="~/torchbeast",
                     help="Root dir where experiment data will be saved.")
 parser.add_argument("--num_actors", default=4, type=int, metavar="N",
                     help="Number of actors.")
-parser.add_argument("--total_steps", default=100000, type=int, metavar="T",
+parser.add_argument("--total_steps", default=1000000000, type=int, metavar="T",
                     help="Total environment steps to train for.")
 parser.add_argument("--batch_size", default=8, type=int, metavar="B",
                     help="Learner batch size.")
@@ -68,8 +68,6 @@ parser.add_argument("--num_inference_threads", default=2, type=int,
                     metavar="N", help="Number learner threads.")
 parser.add_argument("--disable_cuda", action="store_true",
                     help="Disable CUDA.")
-parser.add_argument("--num_actions", default=6, type=int, metavar="A",
-                    help="Number of actions.")
 parser.add_argument("--use_lstm", action="store_true",
                     help="Use LSTM in agent model.")
 parser.add_argument("--max_learner_queue_size", default=None, type=int, metavar="N",
@@ -734,7 +732,7 @@ def train(flags):
     if not flags.disable_cuda and torch.cuda.is_available():
         logging.info("Using CUDA.")
         flags.learner_device = torch.device("cuda:0")
-        flags.actor_device = torch.device("cuda:1")
+        flags.actor_device = torch.device("cuda:6")
     else:
         logging.info("Not using CUDA.")
         flags.learner_device = torch.device("cpu")
@@ -775,15 +773,18 @@ def train(flags):
                 break
         pipe_id += 1
 
-    env = create_env(flags.env, archivefile=None)
+    # Do not save any nethack stuff
+    env = create_env(flags.env, archivefile=None, savedir=None)
     observation_space = env.observation_space
     action_space = env.action_space
     del env  # End this before forking.
-
     model = Net(observation_space, action_space.n, flags.use_lstm)
+    model = torch.nn.DataParallel(model, device_ids=[0, 1, 2, 3, 4, 5])
     model = model.to(device=flags.learner_device)
 
     actor_model = Net(observation_space, action_space.n, flags.use_lstm)
+    initial_state = actor_model.initial_state()
+    actor_model = torch.nn.DataParallel(actor_model, device_ids=[6, 7])
     actor_model.to(device=flags.actor_device)
 
     logging.info("Net initialized")
@@ -794,7 +795,7 @@ def train(flags):
         learner_queue=learner_queue,
         inference_batcher=inference_batcher,
         env_server_addresses=addresses,
-        initial_agent_state=actor_model.initial_state(),
+        initial_agent_state=initial_state,
     )
 
     def run():
