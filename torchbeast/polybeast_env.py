@@ -19,8 +19,10 @@ import threading
 import time
 
 import numpy as np
-import libtorchbeast
 from torchbeast import atari_wrappers
+
+import libtorchbeast
+import nle
 
 
 # yapf: disable

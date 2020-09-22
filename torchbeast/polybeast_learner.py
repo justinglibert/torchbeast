@@ -37,8 +37,8 @@ os.environ["OMP_NUM_THREADS"] = "1"
 # yapf: disable
 parser = argparse.ArgumentParser(description="PyTorch Scalable Agent")
 
-parser.add_argument("--pipes_basename", default="unix:/tmp/polybeast",
-                    help="Basename for the pipes for inter-process communication. "
+parser.add_argument("--env_server_addresses", default="172.31.40.206",
+                    help="Address of the env server"
                     "Has to be of the type unix:/some/path.")
 parser.add_argument("--mode", default="train",
                     choices=["train", "test", "test_render"],
@@ -402,7 +402,8 @@ def train(flags):
     if not flags.disable_cuda and torch.cuda.is_available():
         logging.info("Using CUDA.")
         flags.learner_device = torch.device("cuda:0")
-        flags.actor_device = torch.device("cuda:1")
+        #flags.actor_device = torch.device("cuda:1")
+        flags.actor_device = torch.device("cpu")
     else:
         logging.info("Not using CUDA.")
         flags.learner_device = torch.device("cpu")
@@ -438,7 +439,7 @@ def train(flags):
     pipe_id = 0
     while len(addresses) < flags.num_actors:
         for _ in range(connections_per_server):
-            addresses.append(f"{flags.pipes_basename}.{pipe_id}")
+            addresses.append(f"{flags.env_server_addresses}:1212{pipe_id}")
             if len(addresses) == flags.num_actors:
                 break
         pipe_id += 1
@@ -598,9 +599,6 @@ def test(flags):
 
 
 def main(flags):
-    if not flags.pipes_basename.startswith("unix:"):
-        raise Exception("--pipes_basename has to be of the form unix:/some/path.")
-
     if flags.mode == "train":
         if flags.write_profiler_trace:
             logging.info("Running with profiler.")

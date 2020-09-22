@@ -360,16 +360,12 @@ class ActorPool {
     auto deadline =
         std::chrono::system_clock::now() + std::chrono::seconds(10 * 60);
 
-    if (loop_index == 0) {
-      std::cout << "First Environment waiting for connection to " << address
+    std::cout << "First Environment waiting for connection to " << address
                 << " ...";
-    }
     if (!channel->WaitForConnected(deadline)) {
       throw py::timeout_error("WaitForConnected timed out.");
     }
-    if (loop_index == 0) {
-      std::cout << " connection established." << std::endl;
-    }
+    std::cout << " connection established." << std::endl;
 
     grpc::ClientContext context;
     std::shared_ptr<grpc::ClientReaderWriter<rpcenv::Action, rpcenv::Step>>
@@ -412,7 +408,6 @@ class ActorPool {
     try {
       while (true) {
         rollout.push_back(std::move(last));
-
         for (int t = 1; t <= unroll_length_; ++t) {
           all_agent_outputs = inference_batcher_->compute(compute_inputs);
 
