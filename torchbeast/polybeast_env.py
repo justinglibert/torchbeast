@@ -21,6 +21,7 @@ import time
 import numpy as np
 import libtorchbeast
 from torchbeast import atari_wrappers
+import nle
 
 
 # yapf: disable
