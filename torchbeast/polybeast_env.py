@@ -20,6 +20,7 @@ import time
 
 import numpy as np
 from torchbeast import atari_wrappers
+import nle
 
 import libtorchbeast
 
