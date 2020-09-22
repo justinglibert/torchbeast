@@ -402,7 +402,8 @@ def train(flags):
     if not flags.disable_cuda and torch.cuda.is_available():
         logging.info("Using CUDA.")
         flags.learner_device = torch.device("cuda:0")
-        flags.actor_device = torch.device("cuda:1")
+        #flags.actor_device = torch.device("cuda:1")
+        flags.actor_device = torch.device("cpu")
     else:
         logging.info("Not using CUDA.")
         flags.learner_device = torch.device("cpu")
