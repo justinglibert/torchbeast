@@ -19,16 +19,14 @@ import threading
 import time
 
 import numpy as np
-import libtorchbeast
 from torchbeast import atari_wrappers
+
+import libtorchbeast
 
 
 # yapf: disable
 parser = argparse.ArgumentParser(description='Remote Environment Server')
 
-parser.add_argument("--pipes_basename", default="unix:/tmp/polybeast",
-                    help="Basename for the pipes for inter-process communication. "
-                    "Has to be of the type unix:/some/path.")
 parser.add_argument('--num_servers', default=4, type=int, metavar='N',
                     help='Number of environment servers.')
 parser.add_argument('--env', type=str, default='PongNoFrameskip-v4',
@@ -65,13 +63,11 @@ def serve(env_name, server_address):
 
 
 def main(flags):
-    if not flags.pipes_basename.startswith("unix:"):
-        raise Exception("--pipes_basename has to be of the form unix:/some/path.")
 
     processes = []
     for i in range(flags.num_servers):
         p = mp.Process(
-            target=serve, args=(flags.env, f"{flags.pipes_basename}.{i}"), daemon=True
+                target=serve, args=(flags.env, f"0.0.0.0:1212{i}"), daemon=True
         )
         p.start()
         processes.append(p)
