@@ -17,9 +17,13 @@ import argparse
 import multiprocessing as mp
 import threading
 import time
+import os
 
 import numpy as np
 from torchbeast import atari_wrappers
+import nle
+import gym
+import libtorchbeast
 
 import libtorchbeast
 import nle
@@ -28,13 +32,12 @@ import nle
 # yapf: disable
 parser = argparse.ArgumentParser(description='Remote Environment Server')
 
-parser.add_argument("--pipes_basename", default="unix:/tmp/polybeast",
-                    help="Basename for the pipes for inter-process communication. "
-                    "Has to be of the type unix:/some/path.")
 parser.add_argument('--num_servers', default=4, type=int, metavar='N',
                     help='Number of environment servers.')
-parser.add_argument('--env', type=str, default='PongNoFrameskip-v4',
+parser.add_argument('--env', type=str, default='NetHackScore-v0',
                     help='Gym environment.')
+parser.add_argument("--savedir", default="~/torchbeast/",
+                    help="Root dir where experiment data will be saved.")
 # yapf: enable
 
 
@@ -47,33 +50,25 @@ class Env:
         frame = np.zeros((4, 84, 84), dtype=np.uint8)
         return frame, 0.0, False, {}  # First three mandatory.
 
+def create_env(name, savedir, process_id):
+    savedir = os.path.expandvars(os.path.expanduser(savedir))
+    rundir = os.path.join(
+        savedir, "torchbeast-{}-{}".format(time.strftime("%Y%m%d-%H%M%S"), process_id)
+    )
+    return gym.make(name, observation_keys=("glyphs", "blstats"), savedir=rundir)
 
-def create_env(env_name, lock=threading.Lock()):
-    with lock:  # Atari isn't threadsafe at construction time.
-        return atari_wrappers.wrap_pytorch(
-            atari_wrappers.wrap_deepmind(
-                atari_wrappers.make_atari(env_name),
-                clip_rewards=False,
-                frame_stack=True,
-                scale=False,
-            )
-        )
-
-
-def serve(env_name, server_address):
-    init = Env if env_name == "Mock" else lambda: create_env(env_name)
+def serve(env_name, savedir, process_id, server_address):
+    init = Env if env_name == "Mock" else lambda: create_env(env_name, savedir, process_id)
     server = libtorchbeast.Server(init, server_address=server_address)
     server.run()
 
 
 def main(flags):
-    if not flags.pipes_basename.startswith("unix:"):
-        raise Exception("--pipes_basename has to be of the form unix:/some/path.")
 
     processes = []
     for i in range(flags.num_servers):
         p = mp.Process(
-            target=serve, args=(flags.env, f"{flags.pipes_basename}.{i}"), daemon=True
+                target=serve, args=(flags.env, flags.savedir, i, f"0.0.0.0:1212{i}"), daemon=True
         )
         p.start()
         processes.append(p)
